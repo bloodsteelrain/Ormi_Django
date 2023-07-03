@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.views import View
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Post, Comment, HashTag
 from .forms import PostForm, CommentForm, HashTagForm
 from django.urls import reverse_lazy, reverse
@@ -29,30 +30,30 @@ class Index(View):
             'posts': post_objs
         }
         # print(post_objs) Queryset <1, 2, 3>
-        return render(request, 'blog/board.html', context)
+        return render(request, 'blog/post_list.html', context)
     
 
 # write
 # post - form
 # 글 작성 화면
-def write(request):
-    if request.method == 'POST':
-        # form 확인
-        form = PostForm(request.POST)
-        if form.is_valid():
-            post = form.save()
-            return redirect('blog:list')
-    form = PostForm()
-    return render(request, 'blog/post_form.html', {'form': form})
+# def write(request):
+#     if request.method == 'POST':
+#         # form 확인
+#         form = PostForm(request.POST)
+#         if form.is_valid():
+#             post = form.save()
+#             return redirect('blog:list')
+#     form = PostForm()
+#     return render(request, 'blog/post_form.html', {'form': form})
 
 # Django 자체의 클래스 뷰 기능도 강력, 편리
 # model, template_name, context_object_name,
 # paginate_by, form_class, form_valid(), get_queryset()
 # django.views.generic -> ListView
-class List(ListView):
-    model = Post # 모델
-    template_name = 'blog/post_list.html' # 템플릿
-    context_object_name = 'posts' # 변수값의 이름
+# class List(ListView):
+#     model = Post # 모델
+#     template_name = 'blog/post_list.html' # 템플릿
+#     context_object_name = 'posts' # 변수값의 이름
 
 
 class Write(CreateView):
@@ -60,6 +61,28 @@ class Write(CreateView):
     form_class = PostForm # 폼
     success_url = reverse_lazy('blog:list') # 성공시 보내줄 url
     # post_form.html
+
+class Write(LoginRequiredMixin, View):
+    # Mixin: LoginRequiredMixin
+    def get(self, request):
+        form = PostForm()
+        context = {
+            'form': form
+        }
+        return render(request, 'blog/post_form.html', context)
+    
+    def post(self, request):
+        form = PostForm(request.POST)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.writer = request.user
+            post.save()
+            return redirect('blog:list')
+        form.add_error(None, '폼이 유효하지 않습니다.')
+        context = {
+            'form': form
+        }
+        return render(request, 'blog/post_form.html', context)
 
 
 class Detail(DetailView):
