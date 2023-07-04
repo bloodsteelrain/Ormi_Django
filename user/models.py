@@ -15,9 +15,11 @@ class UserManager(BaseUserManager):
 
     def _create_user(self, email, password, is_staff, is_superuser, **extra_fields):
         if not email:
-            raise ValueError('User must have an email')
-        now = timezone.now()
-        email = self.normalize_email(email)
+            raise ValueError('User must have an email') # User모델의 username이 아니라 email을 id처럼 사용하기 위해서 email이 필수임을 체크합니다. -> 아닐시 오류를 발생시켜 유저 생성이 진행되지 않습니다.
+        # now = timezone.now() # UTC 기준
+        now = timezone.localtime() # User 테이블에 타입(class User(AbstractUser) 내부의 last_login, date_joined 필드)에 맞춰 현재 시각을 가져오기 위한 부분입니다. (데이터 타입: datetime)
+        email = self.normalize_email(email) # normalize_email은 BaseUserManager에서 제공하는 메서드로 정규화를 실행하는 메서드(함수)입니다.
+        # 이메일 주소의 대소문자 구분에 따른 중복계정 방지를 위해 사용됩니다.
         user = self.model(
             email=email,
             is_staff=is_staff,
@@ -26,9 +28,9 @@ class UserManager(BaseUserManager):
             last_login=now,
             date_joined=now,
             **extra_fields
-        )
-        user.set_password(password)
-        user.save(using=self._db)
+        ) # 일반 유저인지 관리자 유저인지를 메서드 실행시 입력받은 값으로 구분해서 유저를 생성합니다.
+        user.set_password(password) # 여기서 set_password 메서드는 사용자에게 받은 암호를 안전하게 저장하기 위해 암호화 과정을 더해주는 부분입니다.
+        user.save(using=self._db) # using는 어떤 데이터베이스를 사용할 지 지정해주는 매개변수로 self._db는 현재 사용중인 데이터베이스를 의미합니다.
         return user
     # create_user
     def create_user(self, email, password, **extra_fields):
